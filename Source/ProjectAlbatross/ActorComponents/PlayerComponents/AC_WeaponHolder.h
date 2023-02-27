@@ -22,9 +22,6 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	bool UnEquipCurrentWeapon();
-	
-	UFUNCTION(BlueprintCallable)
-	float Attack(bool bIsHeavy);
 
 	UFUNCTION(BlueprintCallable)
 	bool Fire(bool bIsZoomed);

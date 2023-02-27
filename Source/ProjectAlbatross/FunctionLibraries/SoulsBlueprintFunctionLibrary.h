@@ -16,5 +16,6 @@ class PROJECTALBATROSS_API USoulsBlueprintFunctionLibrary : public UBlueprintFun
 
 public:
 	UFUNCTION(BlueprintCallable)
-	static void flushInputs(const APlayerController* PlayerController);
+	static void FlushInputs(const APlayerController* PlayerController);
+	static float GetAngleBetweenTwoVectors2D(const FVector2D Vector1, const FVector2D Vector2);
 };

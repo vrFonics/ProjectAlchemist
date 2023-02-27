@@ -49,9 +49,11 @@ public:
 	void SendAnimMontage(UAnimMontage* MontageToPlay);
 	
 	UFUNCTION()
-	float Attack(bool IsHeavy);
+	float Attack(bool IsHeavy, UAnimMontage* AnimationOverride = nullptr);
 	UFUNCTION()
 	float Fire(bool IsZoomed);
+
+	void QuickShot(UAnimMontage* AnimationOverride = nullptr);
 	
 	UFUNCTION(BlueprintCallable)
 	void RefreshHitActorsArray();
@@ -110,9 +112,4 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int CurrentCombo;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	bool LightCombo;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	bool HeavyCombo;
 };

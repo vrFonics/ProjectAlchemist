@@ -45,9 +45,6 @@ protected:
 	UFUNCTION()
 	TMap<ALockOnPoint*, FVector2D> GetPointsOnScreen(FVector2D ViewPortSize, APlayerController* Controller, FVector CameraLocation);
 
-	UFUNCTION()
-	float GetAngleBetweenTwoVectors(FVector2D Vector1, FVector2D Vector2);
-	
 	UPROPERTY()
 	ALockOnPoint* CurrentLockedPoint;
 

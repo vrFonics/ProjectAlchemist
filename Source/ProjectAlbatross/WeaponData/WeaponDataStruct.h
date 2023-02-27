@@ -34,10 +34,11 @@ public:
 		, FireRate(0)
 		, HipFireElixirAmmoCost(0)
 		, ZoomElixirAmmoCost(0)
-		, FireAnimation(nullptr)
 		, WeaponBaseMesh(nullptr)
 		, WeaponMeleeMesh(nullptr)
 		, WeaponRangedMesh(nullptr)
+		, OutOfDodgeLightAttackAnimation(nullptr)
+		, OutOfDodgeQuickShotAnimation(nullptr)
 	{}
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
@@ -102,9 +103,6 @@ public:
 	TSubclassOf<AWeaponProjectile> ZoomProjectile;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	UAnimMontage* FireAnimation;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	USkeletalMesh* WeaponBaseMesh;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	USkeletalMesh* WeaponMeleeMesh;
@@ -116,10 +114,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<UAnimMontage*> MeleeHeavyAnimations;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAnimMontage* OutOfDodgeLightAttackAnimation;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAnimMontage* OutOfDodgeQuickShotAnimation;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TArray<UAnimMontage*> HipFireAnimations;
+	TArray<UAnimMontage*> QuickShotAnimations;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TArray<UAnimMontage*> RangedAnimations;
+	TArray<UAnimMontage*> SpecialRangedShotAnimations;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<UAnimMontage*> FinisherAnimations;

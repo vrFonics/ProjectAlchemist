@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -10,6 +8,10 @@
 #include "ProjectAlbatross/ActorComponents/PlayerComponents/AC_LockOnComponent.h"
 #include "ProjectAlbatross/ActorComponents/PlayerComponents/AC_SoulsCameraComponent.h"
 #include "ProjectAlbatross/ActorComponents/PlayerComponents/AC_WeaponHolder.h"
+#include "EnhancedInput/Public/InputMappingContext.h"
+#include "EnhancedInput/Public/EnhancedInputSubsystems.h"
+#include "EnhancedInput/Public/InputAction.h"
+#include "EnhancedInput/Public/InputActionValue.h"
 #include "SoulsCharacter.generated.h"
 
 UENUM()
@@ -19,6 +21,8 @@ enum ESoulsInput
 	ESI_LightAttack,
 	ESI_HeavyAttack,
 	ESI_Blink,
+	ESI_QuickShot,
+	ESI_SpecialRangedShot
 };
 
 UENUM()
@@ -51,6 +55,28 @@ enum ECameraState
 	CameraRanged UMETA(DisplayName = "Ranged"),
 	CameraZoomed UMETA(DisplayName = "RangedZoomed"),
 	CameraCinematic UMETA(DisplayName = "Cinematic")
+};
+
+USTRUCT(BlueprintType)
+struct FInventoryItem : public FTableRowBase
+{
+	GENERATED_USTRUCT_BODY()
+public:
+	FInventoryItem()
+		: ItemDisplayName("New Item")
+	, ItemDescription("This is a new item.")
+	, ItemImage(nullptr)
+	, MaxAmount(0)
+	{}
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString ItemDisplayName;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString ItemDescription;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture* ItemImage;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int MaxAmount;
 };
 
 USTRUCT(BlueprintType)
@@ -106,6 +132,13 @@ public:
 	void UpdateCameraState(ECameraState NewState);
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void UsedStamina();
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void NotifyPlayerOfBlinkStarted();
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void NotifyPlayerOfBlinkFinished();
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void NotifyPlayerOfQuickshot();
 
 	//Stamina functions
 	UFUNCTION(BlueprintCallable)
@@ -122,6 +155,9 @@ public:
 	//Updates the soulscharacterstate
 	UFUNCTION()
 	void UpdateSoulsCharacterState(ESoulsCharacterState NewState);
+
+	UFUNCTION(BlueprintCallable)
+	void ToggleMenu(bool bAddMenuContext, bool bCanPlayerMove);
 	
 protected:
 	// Called when the game starts or when spawned
@@ -129,17 +165,26 @@ protected:
 
 	//Movement and camera rotation input
 	UFUNCTION()
-	void MoveY(float AxisValue);
+	void MovePlayer(const FInputActionValue& Value);
+	/*
 	UFUNCTION()
 	void MoveX(float AxisValue);
+	*/
 	UFUNCTION()
-	void RotateCameraY(float AxisValue);
+	void RotateCamera(const FInputActionValue& Value);
+	/*
 	UFUNCTION()
 	void RotateCameraX(float AxisValue);
+	*/
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FVector2D IntendedDirection;
 
 	//Attempt to lock on, if already locked on will cancel lock-on
 	UFUNCTION()
 	void TryLockOn();
+	UFUNCTION()
+	void TrySwitchLockOnTarget(const FInputActionValue& Value);
 
 	//Blink functions
 	UFUNCTION()
@@ -155,13 +200,18 @@ protected:
 
 	//locked cameraRotation
 	UFUNCTION()
-	void DoLockedCameraRotation();
+	void DoLockedCameraRotation(float DeltaTime);
 
 	//Attack functions
 	UFUNCTION()
 	void LightAttack();
 	UFUNCTION()
 	void HeavyAttack();
+
+	void QuickShot();
+	void SpecialRangedShot();
+	void EngageRangedMode();
+	void DisengageRangedMode();
 
 	//UPROPERTY()
 	//float CameraPitchAngle;
@@ -176,6 +226,12 @@ protected:
 	//Calculated direction of blink
 	UPROPERTY()
 	FVector BlinkDirection;
+	UPROPERTY()
+	FVector BlinkTargetLocation;
+	UPROPERTY()
+	FVector PreviousLocation;
+	UPROPERTY()
+	float TimeSinceBlinkStarted;
 	//Timer handle to restore movement ability after blink is over
 	UPROPERTY()
 	FTimerHandle BlinkTimer;
@@ -195,8 +251,58 @@ protected:
 	//Has the player already switched targets and input hasn't been reset below threshold yet?
 	UPROPERTY()
 	bool bJustSwitchedTarget;
-
+#pragma region /** Input */
+	//Input
 	bool bInputQueueable;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UInputMappingContext* MovingMappingContext;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UInputMappingContext* LockedOnMappingContext;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UInputMappingContext* RangedMappingContext;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UInputMappingContext* MenuMappingContext;
+
+	UPROPERTY()
+	TMap<class UInputMappingContext*, int> PreviousMappingContexts;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInputAction* PlayerMoveAction;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInputAction* PlayerLookAction;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInputAction* BlinkAction;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInputAction* SprintAction;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInputAction* HealAction;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInputAction* LightAttackAction;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInputAction* HeavyAttackAction;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInputAction* LockOnAction;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInputAction* SwitchLockOnTargetAction;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInputAction* EngageRangedModeAction;
+	/*
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInputAction* DisengageRangedModeAction;
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInputAction* QuickShotAction;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInputAction* SpecialRangedShotAction;
+#pragma endregion 
+
+    bool bIsInRanged;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bDamageable;
 	
 public:	
 	// Called every frame

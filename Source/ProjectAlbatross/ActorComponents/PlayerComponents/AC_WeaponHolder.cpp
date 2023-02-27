@@ -42,11 +42,6 @@ bool UAC_WeaponHolder::UnEquipCurrentWeapon()
 	return false;
 }
 
-float UAC_WeaponHolder::Attack(bool bIsHeavy)
-{
-	return CurrentEquippedWeapon->Attack(bIsHeavy);
-}
-
 bool UAC_WeaponHolder::Fire(bool bIsZoomed)
 {
 	if (bCanFire)

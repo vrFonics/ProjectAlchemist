@@ -24,8 +24,6 @@ AWeaponActor::AWeaponActor()
 
 	CurrentTargetAcquisition = 0;
 
-	LightCombo = false;
-	HeavyCombo = false;
 	CurrentCombo = 0;
 
 	CancelResetCombo = false;
@@ -62,7 +60,7 @@ void AWeaponActor::DoMeleeTraces()
 	}
 }
 
-float AWeaponActor::Attack(bool IsHeavy)
+float AWeaponActor::Attack(bool IsHeavy, UAnimMontage* AnimationOverride)
 {
 	if (IsHeavy)
 	{
@@ -75,8 +73,6 @@ float AWeaponActor::Attack(bool IsHeavy)
 		if (CurrentCombo > HeavyAnimMontages.Num() - 1)
 		{
 			CurrentCombo = 0;
-			HeavyCombo = true;
-			LightCombo = false;
 		}
 		FTimerHandle ResetComboTimer;
 		GetWorld()->GetTimerManager().SetTimer(ResetComboTimer, this, &AWeaponActor::ResetCombo, HeavyAnimMontages[CurrentCombo]->GetPlayLength() / HeavyAnimMontages[CurrentCombo]->RateScale, false);
@@ -86,22 +82,30 @@ float AWeaponActor::Attack(bool IsHeavy)
 	}
 	else
 	{
-		TArray<UAnimMontage*> LightAnimMontages = WeaponComponent->GetWeaponData().MeleeLightAnimations;
-		bCurrentIsHeavy = false;
-		if (CurrentCombo > 0)
+		UAnimMontage* AnimationToPlay;
+		if (AnimationOverride == nullptr)
 		{
-			CancelResetCombo = true;
+			TArray<UAnimMontage*> LightAnimMontages = WeaponComponent->GetWeaponData().MeleeLightAnimations;
+			bCurrentIsHeavy = false;
+			if (CurrentCombo > 0)
+			{
+				CancelResetCombo = true;
+			}
+			if (CurrentCombo > LightAnimMontages.Num() - 1)
+			{
+				CurrentCombo = 0;
+			}
+			AnimationToPlay = LightAnimMontages[CurrentCombo];
 		}
-		if (CurrentCombo > LightAnimMontages.Num() - 1)
+		else
 		{
-			CurrentCombo = 0;
-			LightCombo = true;
-			HeavyCombo = false;
+			AnimationToPlay = AnimationOverride;
 		}
 		FTimerHandle ResetComboTimer;
-		GetWorld()->GetTimerManager().SetTimer(ResetComboTimer, this, &AWeaponActor::ResetCombo, LightAnimMontages[CurrentCombo]->GetPlayLength() / LightAnimMontages[CurrentCombo]->RateScale, false);
+		GetWorld()->GetTimerManager().SetTimer(ResetComboTimer, this, &AWeaponActor::ResetCombo, AnimationToPlay->GetPlayLength() / AnimationToPlay->RateScale, false);
+		const float AnimTime =  CharacterMesh->AnimScriptInstance->Montage_Play(AnimationToPlay);
 		CurrentCombo++;
-		return CharacterMesh->AnimScriptInstance->Montage_Play(LightAnimMontages[CurrentCombo - 1]);
+		return AnimTime;
 		//SendAnimMontage(WeaponComponent->GetWeaponData().MeleeLightAnimations[0]);
 	}
 }
@@ -117,11 +121,11 @@ float AWeaponActor::Fire(bool IsZoomed)
 	{
 		ProjectileToSpawn = WeaponComponent->GetWeaponData().HipFireProjectile;
 	}
+	ASoulsCharacter* Character = Cast<ASoulsCharacter>(CharacterMesh->GetOwner());
 	FHitResult HitResult;
 	FCollisionQueryParams Params;
-	ASoulsCharacter* Character = Cast<ASoulsCharacter>(CharacterMesh->GetOwner());
 	Params.AddIgnoredActor(Character);
-	GetWorld()->LineTraceSingleByChannel(HitResult, Character->Camera->GetComponentLocation(), Character->Camera->GetComponentLocation() + Character->Camera->GetForwardVector() * 100000, ECollisionChannel::ECC_Pawn, Params);
+	GetWorld()->LineTraceSingleByChannel(HitResult, Character->Camera->GetComponentLocation(), Character->LockOnComponent->GetCurrentLockOnPoint()->GetActorLocation(), ECollisionChannel::ECC_Pawn, Params);
 	FRotator Rotation;
 	if (HitResult.bBlockingHit)
 	{
@@ -135,7 +139,7 @@ float AWeaponActor::Fire(bool IsZoomed)
 	FHitResult ShootResult;
 	FCollisionQueryParams ShootParams;
 	ShootParams.AddIgnoredActor(Character);
-	GetWorld()->LineTraceSingleByChannel(ShootResult, this->GetActorLocation(), Character->GetActorLocation() + (GetProjectileDirection(IsZoomed, Rotation).Vector() * 100000), ECollisionChannel::ECC_Pawn, ShootParams);
+	GetWorld()->LineTraceSingleByChannel(ShootResult, this->GetActorLocation(), Character->LockOnComponent->GetCurrentLockOnPoint()->GetActorLocation(), ECollisionChannel::ECC_Pawn, ShootParams);
 
 	if (ShootResult.bBlockingHit)
 	{
@@ -154,16 +158,44 @@ float AWeaponActor::Fire(bool IsZoomed)
 		Projectile->EndingLocation = ShootResult.TraceEnd;
 	}
 	Projectile->FinishSpawning(ProjectileTransform); 
-	
 	CurrentTargetAcquisition += WeaponComponent->GetWeaponData().TargetAcquisitionDeltaPerShot;
 	if (CurrentTargetAcquisition > 1)
 	{
 		CurrentTargetAcquisition = 1;
 	}
-
 	UGameplayStatics::PlaySoundAtLocation(GetWorld(), WeaponComponent->GetWeaponData().FireSounds[0], CharacterMesh->GetComponentLocation(), FRotator::ZeroRotator, 1, 1, 0);
-	CharacterMesh->GetAnimInstance()->Montage_Play(WeaponComponent->GetWeaponData().FireAnimation);
 	return 0;
+}
+
+void AWeaponActor::QuickShot(UAnimMontage* AnimationOverride)
+{
+	ASoulsCharacter* Character = Cast<ASoulsCharacter>(CharacterMesh->GetOwner());
+	if (Character->GetCameraState() != CameraMeleeLockedOn)
+	{
+		return;
+	}
+	UAnimMontage* AnimationToPlay;
+	if (AnimationOverride == nullptr)
+	{
+		if (CurrentCombo > 0)
+		{
+			CancelResetCombo = true;
+		}
+		TArray<UAnimMontage*> QuickShotAnimations = WeaponComponent->GetWeaponData().QuickShotAnimations;
+		if (CurrentCombo > QuickShotAnimations.Num() - 1)
+		{
+			CurrentCombo = 0;
+		}
+		AnimationToPlay = QuickShotAnimations[CurrentCombo];
+	}
+	else
+	{
+		AnimationToPlay = AnimationOverride;
+	}
+	FTimerHandle ResetComboTimer;
+	GetWorld()->GetTimerManager().SetTimer(ResetComboTimer, this, &AWeaponActor::ResetCombo, AnimationToPlay->GetPlayLength() / AnimationToPlay->RateScale, false);
+	CharacterMesh->GetAnimInstance()->Montage_Play(AnimationToPlay);
+	CurrentCombo++;
 }
 
 void AWeaponActor::RefreshHitActorsArray()
@@ -196,8 +228,6 @@ void AWeaponActor::ResetCombo()
 		return;
 	}
 	CurrentCombo = 0;
-	LightCombo = false;
-	HeavyCombo = false;
 }
 
 FRotator AWeaponActor::GetProjectileDirection(bool IsZoomed, FRotator StartingRotation)

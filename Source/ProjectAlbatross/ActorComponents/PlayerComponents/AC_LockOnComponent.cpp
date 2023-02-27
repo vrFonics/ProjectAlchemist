@@ -5,6 +5,7 @@
 
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "ProjectAlbatross/FunctionLibraries/SoulsBlueprintFunctionLibrary.h"
 
 // Sets default values for this component's properties
 UAC_LockOnComponent::UAC_LockOnComponent()
@@ -159,7 +160,7 @@ void UAC_LockOnComponent::TryChangeTarget(APlayerController* Controller, FVector
 			ClosestPoint = Point;
 			continue;
 		}
-		if (GetAngleBetweenTwoVectors(InputDirection, Point.Value - ScreenCenter) < GetAngleBetweenTwoVectors(InputDirection, ClosestPoint.Value - ScreenCenter))
+		if (USoulsBlueprintFunctionLibrary::GetAngleBetweenTwoVectors2D(InputDirection, Point.Value - ScreenCenter) < USoulsBlueprintFunctionLibrary::GetAngleBetweenTwoVectors2D(InputDirection, ClosestPoint.Value - ScreenCenter))
 		{
 			if (FVector2D::Distance(Point.Value, ScreenCenter) < FVector2D::Distance(ClosestPoint.Value, ScreenCenter))
 			{
@@ -228,11 +229,6 @@ TMap<ALockOnPoint*, FVector2D> UAC_LockOnComponent::GetPointsOnScreen(FVector2D 
 		}
 	}
 	return PointsOnScreen;
-}
-
-float UAC_LockOnComponent::GetAngleBetweenTwoVectors(FVector2D Vector1, FVector2D Vector2)
-{
-	return UKismetMathLibrary::DegAcos(UKismetMathLibrary::DotProduct2D(Vector1.GetSafeNormal(), Vector2.GetSafeNormal()));
 }
 
 // Called every frame
