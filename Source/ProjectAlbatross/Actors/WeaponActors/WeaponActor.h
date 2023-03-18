@@ -49,11 +49,17 @@ public:
 	void SendAnimMontage(UAnimMontage* MontageToPlay);
 	
 	UFUNCTION()
-	float Attack(bool IsHeavy, UAnimMontage* AnimationOverride = nullptr);
+	float Attack(bool IsHeavy, FAttackAnimation AnimationOverride = *new FAttackAnimation());
 	UFUNCTION()
 	float Fire(bool IsZoomed);
+	UFUNCTION()
+	void ShootSingleProjectile(AActor* Character, bool IsZoomed, FRotator Rotation, TSubclassOf<AWeaponProjectile> ProjectileToSpawn);
+	UFUNCTION()
+	void ShootSpreadProjectile(AActor* Character, bool IsZoomed, FRotator Rotation, TSubclassOf<AWeaponProjectile> ProjectileToSpawn);
 
-	void QuickShot(UAnimMontage* AnimationOverride = nullptr);
+	void QuickShot(FRangedAttackAnimation AnimationOverride = *new FRangedAttackAnimation());
+
+	float CalculateDamage(FAttackAnimation AttackAnimation);
 	
 	UFUNCTION(BlueprintCallable)
 	void RefreshHitActorsArray();
@@ -83,7 +89,8 @@ protected:
 
 	UPROPERTY()	
 	float CurrentTargetAcquisition;
-	
+
+	FAttackAnimation CurrentAnimation;
 
 public:	
 	// Called every frame
@@ -91,6 +98,9 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAC_Weapon* WeaponComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAC_StatsComponent* StatsComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int WeaponID;

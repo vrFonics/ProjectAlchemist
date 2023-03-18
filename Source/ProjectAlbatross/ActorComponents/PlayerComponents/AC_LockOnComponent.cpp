@@ -46,8 +46,11 @@ bool UAC_LockOnComponent::LockOn(APlayerController* Controller, FVector CameraLo
 	FVector2D ViewPortSize;
 	ViewPortSize.X = ScreenWidth;
 	ViewPortSize.Y = ScreenHeight;
-	TMap<ALockOnPoint*, FVector2D> PointsOnScreen = GetPointsOnScreen(ViewPortSize, Controller, CameraLocation);
-
+	TMap<ALockOnPoint*, FVector2D> PointsOnScreen;
+	if (Controller != nullptr)
+	{
+		 PointsOnScreen = GetPointsOnScreen(ViewPortSize, Controller, CameraLocation);
+	}
 	if (PointsOnScreen.Num() == 0)
 	{
 		return false;

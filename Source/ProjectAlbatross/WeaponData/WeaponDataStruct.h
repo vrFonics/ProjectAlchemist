@@ -9,6 +9,32 @@
 #include "Sound/SoundCue.h"
 #include "WeaponDataStruct.generated.h"
 
+UENUM()
+enum EProjectileType
+{
+	SingleProjectile,
+	SpreadProjectile,
+};
+
+USTRUCT(BlueprintType)
+struct FAttackAnimation
+{
+	GENERATED_USTRUCT_BODY()
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAnimMontage* Animation;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float DamageAmount;
+};
+
+USTRUCT(BlueprintType)
+struct FRangedAttackAnimation : public FAttackAnimation
+{
+	GENERATED_USTRUCT_BODY()
+public:
+	float ElixirCost;
+};
+
 USTRUCT(BlueprintType)
 struct FWeaponData : public FTableRowBase
 {
@@ -22,6 +48,8 @@ public:
 		, HeavyDamage(0)
 		, LightStaminaDrain(0)
 		, HeavyStaminaDrain(0)
+		, ProjectileType(SingleProjectile)
+	/*
 		, EquipTime(0)
 		, UnEquipTime(0)
 		, ModeSwapTime(0)
@@ -32,17 +60,21 @@ public:
 		, MaxHorizontalRecoilAngle(0)
 		, MaxVerticalRecoilAngle(0)
 		, FireRate(0)
+	*/
 		, HipFireElixirAmmoCost(0)
 		, ZoomElixirAmmoCost(0)
 		, WeaponBaseMesh(nullptr)
 		, WeaponMeleeMesh(nullptr)
 		, WeaponRangedMesh(nullptr)
-		, OutOfDodgeLightAttackAnimation(nullptr)
-		, OutOfDodgeQuickShotAnimation(nullptr)
+		, OutOfDodgeLightAttackAnimation()
+		, OutOfDodgeQuickShotAnimation()
 	{}
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int WeaponID;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TArray<int> ScalingStatIDs;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FString WeaponDisplayName;
@@ -69,8 +101,12 @@ public:
 	FSoulsDamageType RangedDamageType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TEnumAsByte<EProjectileType> ProjectileType;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<USoundCue*> FireSounds;
 
+	/*
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	float EquipTime;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
@@ -91,6 +127,7 @@ public:
 	float MaxVerticalRecoilAngle;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	float FireRate;
+	*/
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int HipFireElixirAmmoCost;
@@ -110,22 +147,22 @@ public:
 	USkeletalMesh* WeaponRangedMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TArray<UAnimMontage*> MeleeLightAnimations;
+	TArray<FAttackAnimation> MeleeLightAnimations;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TArray<UAnimMontage*> MeleeHeavyAnimations;
+	TArray<FAttackAnimation> MeleeHeavyAnimations;
 
+	UPROPERTY(EditAnywhere)
+	FAttackAnimation OutOfDodgeLightAttackAnimation;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* OutOfDodgeLightAttackAnimation;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* OutOfDodgeQuickShotAnimation;
+	FRangedAttackAnimation OutOfDodgeQuickShotAnimation;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TArray<UAnimMontage*> QuickShotAnimations;
+	TArray<FRangedAttackAnimation> QuickShotAnimations;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TArray<UAnimMontage*> SpecialRangedShotAnimations;
+	TArray<FRangedAttackAnimation> SpecialRangedShotAnimations;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TArray<UAnimMontage*> FinisherAnimations;
+	TArray<FAttackAnimation> FinisherAnimations;
 };
 
 /**

@@ -8,7 +8,6 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "EnhancedInput/Public/EnhancedInputComponent.h"
-#include "EnhancedInput/Public/InputAction.h"
 #include "EnhancedInput/Public/InputActionValue.h"
 #include "ProjectAlbatross/GameModes/ProjectAlbatrossGameModeBase.h"
 
@@ -23,13 +22,14 @@ ASoulsCharacter::ASoulsCharacter()
 	bUseControllerRotationRoll = false;
 	
 	GetCharacterMovement()->bOrientRotationToMovement = true;
-	GetCharacterMovement()->bUseControllerDesiredRotation = false;
+	//GetCharacterMovement()->bUseControllerDesiredRotation = false;
 	
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
 	SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArmComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	SpringArmComponent->AddLocalOffset(FVector(0, 0, GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight() * 1.5));
+	SpringArmComponent->SetRelativeRotation_Direct(FRotator::ZeroRotator);
 	
 	SpringArmComponent->bEnableCameraLag = true;
 	SpringArmComponent->CameraLagSpeed = 4.0f;
@@ -56,6 +56,10 @@ ASoulsCharacter::ASoulsCharacter()
 	GetMesh()->SetRelativeRotation(FRotator(0, 0, 0));
 
 	bInputQueueable = true;
+
+	StaminaComponent = CreateDefaultSubobject<UAC_StaminaComponent>(TEXT("Stamina Component"));
+	StaminaComponent->StaminaDelegate.BindUObject(this, &ASoulsCharacter::UsedStamina);
+	StatsComponent = CreateDefaultSubobject<UAC_StatsComponent>(TEXT("AC Stats"));
 }
 
 void ASoulsCharacter::UpdateCameraState(ECameraState NewState)
@@ -93,8 +97,13 @@ void ASoulsCharacter::BeginPlay()
 	Super::BeginPlay();
 	SoulsCharacterState = Moving;
 	HealthComponent->KillDelegate.BindUObject(this, &ASoulsCharacter::Die);
-	UpdateSpringArmSettings(*SpringArmSettingsByCameraState.Find(CameraMelee), CameraMelee);
-	CurrentPlayerStamina = MaxPlayerStamina;
+	ElixirComponent->HealthHalved.BindUObject(this, &ASoulsCharacter::NotifyPlayerOfHealthHalved);
+	StatsComponent->SamplesAddedDelegate.BindUObject(this, &ASoulsCharacter::NotifyPlayerOfSamplesAdded);
+	//UpdateSpringArmSettings(*SpringArmSettingsByCameraState.Find(CameraMelee), CameraMelee);
+	UpdateCameraState(CameraMelee);
+	FRotator TargetRotation = this->GetActorTransform().TransformRotation(TargetSpringArmRotation.Quaternion()).Rotator();
+	TargetRotation = FRotator(TargetRotation.Pitch, TargetRotation.Yaw, 0);
+	TargetSpringArmRotation = TargetRotation;
 }
 
 //TODO
@@ -130,6 +139,7 @@ void ASoulsCharacter::RotateCamera(const FInputActionValue& Value)
 	TargetSpringArmRotation.Pitch += -(Value.Get<FVector2D>().Y) * ControllerSensitivity;
 	TargetSpringArmRotation.Pitch = UKismetMathLibrary::ClampAngle(TargetSpringArmRotation.Pitch, -60, 45);
 	TargetSpringArmRotation.Yaw += Value.Get<FVector2D>().X * ControllerSensitivity;
+	Controller->SetControlRotation(TargetSpringArmRotation);
 }
 
 /*
@@ -186,6 +196,12 @@ void ASoulsCharacter::UpdateSoulsCharacterState(ESoulsCharacterState NewState)
 {
 	const ESoulsCharacterState OriginalState = SoulsCharacterState;
 	SoulsCharacterState = NewState;
+	/*
+	if (NewState == Moving)
+	{
+		UpdateCameraState(CameraMelee);
+	}
+	*/
 	if ((OriginalState != Moving) && (NewState == Moving))
 	{
 		ProcessCurrentQueuedInput();
@@ -230,32 +246,6 @@ void ASoulsCharacter::ToggleMenu(bool bAddMenuContext, bool bCanPlayerMove)
 	}
 }
 
-float ASoulsCharacter::AddStamina(float StaminaToAdd)
-{
-	CurrentPlayerStamina += StaminaToAdd;
-	if (CurrentPlayerStamina > MaxPlayerStamina)
-	{
-		CurrentPlayerStamina = MaxPlayerStamina;
-	}
-	return CurrentPlayerStamina;
-}
-
-float ASoulsCharacter::RemoveStamina(float StaminaToRemove)
-{
-	CurrentPlayerStamina -= StaminaToRemove;
-	if (CurrentPlayerStamina < 0)
-	{
-		CurrentPlayerStamina = 0;
-	}
-	UsedStamina();
-	return CurrentPlayerStamina;
-}
-
-float ASoulsCharacter::GetCurrentStamina()
-{
-	return CurrentPlayerStamina;
-}
-
 void ASoulsCharacter::Blink()
 {
 	if (SoulsCharacterState != Moving)
@@ -266,7 +256,7 @@ void ASoulsCharacter::Blink()
 		}
 		return;
 	}
-	if (CurrentPlayerStamina <= 0)
+	if (StaminaComponent->GetCurrentStamina() <= 0)
 	{
 		GetMesh()->GetAnimInstance()->Montage_Play(StumbleMontage);
 		return;
@@ -308,7 +298,7 @@ void ASoulsCharacter::Blink()
 		UpdateSoulsCharacterState(Blinking);
 		GetWorldTimerManager().SetTimer(BlinkTimer, this, &ASoulsCharacter::FinishBlink, BlinkDuration, false);
 	}
-	RemoveStamina(25);
+	StaminaComponent->RemoveStamina(25);
 }
 
 void ASoulsCharacter::FinishBlink()
@@ -392,7 +382,9 @@ void ASoulsCharacter::DoLockedCameraRotation(float DeltaTime)
 	//SpringArmComponent->SetWorldRotation(TargetLockedRotation);
 	GetController()->SetControlRotation(FQuat::Slerp(GetControlRotation().Quaternion(), TargetLockedRotation.Quaternion(), DeltaTime * 5).Rotator());
 	TargetSpringArmRotation = GetControlRotation();
-	SpringArmComponent->SetRelativeRotation_Direct(TargetSpringArmRotation);
+	//TargetSpringArmRotation = FQuat::Slerp(SpringArmComponent->GetComponentRotation().Quaternion(), TargetLockedRotation.Quaternion(), DeltaTime * 5).Rotator();
+	//SpringArmComponent->SetWorldRotation(this->GetTransform().TransformRotation(TargetSpringArmRotation.Quaternion()));
+	SpringArmComponent->SetWorldRotation(TargetSpringArmRotation);
 }
 
 void ASoulsCharacter::LightAttack()
@@ -405,14 +397,14 @@ void ASoulsCharacter::LightAttack()
 		}
 		return;
 	}
-	if (CurrentPlayerStamina <= 0)
+	if (StaminaComponent->GetCurrentStamina() <= 0)
 	{
 		return;
 	}
 	if (WeaponHolderComponent->GetCurrentWeapon()->WeaponComponent->GetMode() == true)
 	{
 		WeaponHolderComponent->GetCurrentWeapon()->Attack(false);
-		RemoveStamina(WeaponHolderComponent->GetCurrentWeapon()->WeaponComponent->GetWeaponData().LightStaminaDrain);
+		StaminaComponent->RemoveStamina(WeaponHolderComponent->GetCurrentWeapon()->WeaponComponent->GetWeaponData().LightStaminaDrain);
 		PreviousCharacterState = SoulsCharacterState;
 		UpdateSoulsCharacterState(Attacking);
 		SuccessfullyLightAttacked();
@@ -429,14 +421,14 @@ void ASoulsCharacter::HeavyAttack()
 		}
 		return;
 	}
-	if (CurrentPlayerStamina <= 0)
+	if (StaminaComponent->GetCurrentStamina() <= 0)
 	{
 		return;
 	}
 	if (WeaponHolderComponent->GetCurrentWeapon()->WeaponComponent->GetMode() == true)
 	{
 		WeaponHolderComponent->GetCurrentWeapon()->Attack(true);
-		RemoveStamina(WeaponHolderComponent->GetCurrentWeapon()->WeaponComponent->GetWeaponData().HeavyStaminaDrain);
+		StaminaComponent->RemoveStamina(WeaponHolderComponent->GetCurrentWeapon()->WeaponComponent->GetWeaponData().HeavyStaminaDrain);
 		PreviousCharacterState = SoulsCharacterState;
 		UpdateSoulsCharacterState(Attacking);
 		SuccessfullyHeavyAttacked();
@@ -506,22 +498,34 @@ void ASoulsCharacter::DisengageRangedMode()
 	SubSystem->RemoveMappingContext(RangedMappingContext);
 }
 
+void ASoulsCharacter::AddInfection(int Amount)
+{
+	int NewAmount = Amount;
+	NewAmount -= Amount * ((StatsComponent->GetStatByID(4).StatLevel) / StatsComponent->MaxPlayerLevel);
+	ElixirComponent->RemoveElixir(NewAmount);
+}
+
 // Called every frame
 void ASoulsCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	if (CameraState == CameraMelee)
 	{
-		SoulsCameraComponent->DoCameraLag(DeltaTime, GetInputAxisValue("RotateCameraX"), GetInputAxisValue("RotateCamera"), GetInputAxisValue("MoveX"), GetInputAxisValue("MovePlayer"), GetCapsuleComponent(),	SpringArmComponent, Camera);
+		//SoulsCameraComponent->DoCameraLag(DeltaTime, GetInputAxisValue("RotateCameraX"), GetInputAxisValue("RotateCamera"), GetInputAxisValue("MoveX"), GetInputAxisValue("MovePlayer"), GetCapsuleComponent(),	SpringArmComponent, Camera);
+		/*
 		if (GetController() != nullptr)
 		{
-			GetController()->SetControlRotation(TargetSpringArmRotation);
+			GetController()->SetControlRotation(SpringArmComponent->GetComponentTransform().TransformRotation(TargetSpringArmRotation.Quaternion()).Rotator());
 		}
-		SpringArmComponent->SetRelativeRotation_Direct(GetControlRotation());
+		*/
+		//SpringArmComponent->SetRelativeRotation(GetControlRotation());
+		SpringArmComponent->SetWorldRotation(TargetSpringArmRotation);
+		//GetMesh()->SetWorldRotation(UKismetMathLibrary::FindLookAtRotation(GetMesh()->GetComponentLocation(), GetMesh()->GetComponentLocation() + FVector(IntendedDirection.X, IntendedDirection.Y, 0)));
 	}
 	else if (CameraState == CameraMeleeLockedOn)
 	{
 		DoLockedCameraRotation(DeltaTime);
+		//GetMesh()->SetWorldRotation(UKismetMathLibrary::FindLookAtRotation(GetMesh()->GetComponentLocation(), LockOnComponent->GetCurrentLockOnPoint()->GetActorLocation()));
 	}
 	if (SoulsCharacterState == Blinking)
 	{

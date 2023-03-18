@@ -3,50 +3,45 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AC_HealthComponent.h"
 #include "Components/ActorComponent.h"
-#include "AC_ElixirComponent.generated.h"
+#include "AC_StaminaComponent.generated.h"
 
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class PROJECTALBATROSS_API UAC_ElixirComponent : public UActorComponent
+class PROJECTALBATROSS_API UAC_StaminaComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:	
 	// Sets default values for this component's properties
-	UAC_ElixirComponent();
+	UAC_StaminaComponent();
 
 	UFUNCTION(BlueprintCallable)
-	int GetCurrentElixir();
-
+	float AddStamina(float StaminaToAdd);
 	UFUNCTION(BlueprintCallable)
-	int AddElixir(int Amount);
-
+	float RemoveStamina(float StaminaToRemove);
 	UFUNCTION(BlueprintCallable)
-	int RemoveElixir(int Amount);
+	float GetCurrentStamina();
 
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-	UPROPERTY()
-	int CurrentElixir;
-
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	//Maximum amount of stamina
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int MaxElixir;
+	float MaxPlayerStamina;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int DefaultMaxElixir;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	float DefaultMaxPlayerStamina;
+	
+	//Current stamina
+	UPROPERTY()
+	float CurrentPlayerStamina;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAC_HealthComponent* HealthComponent;
-
-	DECLARE_DELEGATE(HealthHalvedDelegate)
-
-	HealthHalvedDelegate HealthHalved;
+	DECLARE_DELEGATE(UsedStaminaDelegate)
+	UsedStaminaDelegate StaminaDelegate;
 };

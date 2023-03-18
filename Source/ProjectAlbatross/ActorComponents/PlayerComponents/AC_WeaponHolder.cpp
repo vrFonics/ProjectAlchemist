@@ -30,6 +30,7 @@ void UAC_WeaponHolder::EquipWeapon(TSubclassOf<AWeaponActor> NewWeapon)
 	CurrentEquippedWeapon->SetActorRelativeLocation(FVector::ZeroVector);
 	CurrentEquippedWeapon->WeaponComponent->Equip(*WeaponDataTable->FindRow<FWeaponData>(*FString::FromInt(CurrentEquippedWeapon->WeaponID), ""), FTransform::Identity);
 	CurrentEquippedWeapon->CharacterMesh = CharacterMesh;
+	CurrentEquippedWeapon->StatsComponent = StatsComponent;
 }	
 
 bool UAC_WeaponHolder::UnEquipCurrentWeapon()
@@ -57,7 +58,7 @@ bool UAC_WeaponHolder::Fire(bool bIsZoomed)
 		}
 		bCanFire = false;
 		FTimerHandle FireResetHandle;
-		GetWorld()->GetTimerManager().SetTimer(FireResetHandle, this, &UAC_WeaponHolder::ResetFire, CurrentEquippedWeapon->WeaponComponent->GetWeaponData().FireRate, false);
+		GetWorld()->GetTimerManager().SetTimer(FireResetHandle, this, &UAC_WeaponHolder::ResetFire, /*CurrentEquippedWeapon->WeaponComponent->GetWeaponData().FireRate*/ 0.01, false);
 		CurrentEquippedWeapon->Fire(bIsZoomed);
 		return true;
 	}

@@ -23,7 +23,7 @@ void UAC_StatsComponent::BeginPlay()
 	if (StatsDataTable != nullptr)
 	{
 		TArray<FName> RowNames = StatsDataTable->GetRowNames();
-		for (auto& RowName : RowNames)
+		for (const auto& RowName : RowNames)
 		{
 			Stats.Add(*StatsDataTable->FindRow<FPlayerStat>(RowName, ""));
 		}
@@ -42,6 +42,7 @@ int UAC_StatsComponent::AddPlagueSamples(int Amount)
 	{
 		PlagueSamples = MaxPlagueSamples;
 	}
+	SamplesAddedDelegate.ExecuteIfBound(Amount);
 	return PlagueSamples;
 }
 
@@ -67,7 +68,7 @@ int UAC_StatsComponent::GetPlayerLevel()
 
 FPlayerStat UAC_StatsComponent::GetStatByID(int StatID)
 {
-	for (auto& Stat : Stats)
+	for (auto Stat : Stats)
 	{
 		if (Stat.StatID == StatID)
 		{
@@ -86,7 +87,7 @@ int UAC_StatsComponent::GetCostToUpgrade(int UpgradeTimes)
 	int TotalCost = 0;
 	for (int i = 1; i < UpgradeTimes + 1; i++)
 	{
-		if (PlayerLevel + i <= 20)
+		if (PlayerLevel + i <= MaxPlayerLevel)
 		{
 			const FStatLevelCost Cost = *StatsCurveDataTable->FindRow<FStatLevelCost>(*FString::FromInt(PlayerLevel + i), "", true);
 			TotalCost += Cost.StatCost;
@@ -97,21 +98,43 @@ int UAC_StatsComponent::GetCostToUpgrade(int UpgradeTimes)
 
 bool UAC_StatsComponent::UpgradeStat(int StatID)
 {
-	if (PlagueSamples >= GetCostToUpgrade(PlayerLevel + 1))
+	if (PlagueSamples >= GetCostToUpgrade(1) && !(PlayerLevel > MaxPlayerLevel))
 	{
-		RemovePlagueSamples(GetCostToUpgrade(PlayerLevel + 1));
+		RemovePlagueSamples(GetCostToUpgrade(1));
 		for (auto& Stat : Stats)
 		{
 			if (Stat.StatID == StatID)
 			{
 				Stat.StatLevel += 1;
-				return true;
 				PlayerLevel += 1;
+				RefreshStats();
+				return true;
 			}
 		}
 		return false;
 	}
 	return false;
+}
+
+void UAC_StatsComponent::RefreshStats()
+{
+	HealthComponent->MaxHealthAmount = HealthComponent->DefaultMaxHealthAmount + (Stats[0].StatLevel * 20);
+	HealthComponent->CurrentMaxHealthAmount = HealthComponent->MaxHealthAmount;
+	HealthComponent->AddHealth(HealthComponent->MaxHealthAmount);
+	StaminaComponent->MaxPlayerStamina = StaminaComponent->DefaultMaxPlayerStamina + (Stats[1].StatLevel * 10);
+	StaminaComponent->AddStamina(StaminaComponent->MaxPlayerStamina);
+	ElixirComponent->MaxElixir = ElixirComponent->DefaultMaxElixir + (Stats[5].StatLevel * 10);
+}
+
+TArray<FPlayerStat> UAC_StatsComponent::GetAllStats()
+{
+	return Stats;
+}
+
+void UAC_StatsComponent::SetAllStats(TArray<FPlayerStat> NewStats)
+{
+	Stats = NewStats;
+	RefreshStats();
 }
 
 // Called every frame

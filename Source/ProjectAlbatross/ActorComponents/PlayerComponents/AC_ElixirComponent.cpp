@@ -35,10 +35,10 @@ int UAC_ElixirComponent::RemoveElixir(int Amount)
 	{
 		CurrentElixir = 0;
 		HealthComponent->UpdateMaxHealth((HealthComponent->MaxHealthAmount / 2));
+		HealthHalved.Execute();
 	}
 	return CurrentElixir;
 }
-
 
 // Called when the game starts
 void UAC_ElixirComponent::BeginPlay()
@@ -46,7 +46,7 @@ void UAC_ElixirComponent::BeginPlay()
 	Super::BeginPlay();
 
 	// ...
-	
+	MaxElixir = DefaultMaxElixir;
 }
 
 

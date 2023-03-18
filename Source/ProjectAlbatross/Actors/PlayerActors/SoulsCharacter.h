@@ -10,8 +10,8 @@
 #include "ProjectAlbatross/ActorComponents/PlayerComponents/AC_WeaponHolder.h"
 #include "EnhancedInput/Public/InputMappingContext.h"
 #include "EnhancedInput/Public/EnhancedInputSubsystems.h"
-#include "EnhancedInput/Public/InputAction.h"
 #include "EnhancedInput/Public/InputActionValue.h"
+#include "ProjectAlbatross/ActorComponents/PlayerComponents/AC_StaminaComponent.h"
 #include "SoulsCharacter.generated.h"
 
 UENUM()
@@ -45,6 +45,7 @@ enum ESoulsCharacterState
 	Falling UMETA(DisplayName = "Falling"),
 	Healing UMETA(DisplayName = "Healing"),
 	Resting UMETA(DisplayName = "Resting"),
+	Cinematic UMETA(DisplayName = "Cinematic"),
 };
 
 UENUM()
@@ -136,17 +137,12 @@ public:
 	void NotifyPlayerOfBlinkStarted();
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void NotifyPlayerOfBlinkFinished();
-
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void NotifyPlayerOfHealthHalved();
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void NotifyPlayerOfQuickshot();
-
-	//Stamina functions
-	UFUNCTION(BlueprintCallable)
-	float AddStamina(float StaminaToAdd);
-	UFUNCTION(BlueprintCallable)
-	float RemoveStamina(float StaminaToRemove);
-	UFUNCTION(BlueprintCallable)
-	float GetCurrentStamina();
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void NotifyPlayerOfSamplesAdded(int SamplesAdded);
 
 	//Returns current camera state
 	UFUNCTION(BlueprintCallable)
@@ -213,6 +209,9 @@ protected:
 	void EngageRangedMode();
 	void DisengageRangedMode();
 
+    UFUNCTION(BlueprintCallable)
+	void AddInfection(int Amount);
+
 	//UPROPERTY()
 	//float CameraPitchAngle;
 
@@ -242,10 +241,7 @@ protected:
 	//Previous state of character
 	UPROPERTY()
 	TEnumAsByte<ESoulsCharacterState> PreviousCharacterState;
-
-	//Current stamina
-	UPROPERTY()
-	float CurrentPlayerStamina;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float BlinkDuration;
 	//Has the player already switched targets and input hasn't been reset below threshold yet?
@@ -322,10 +318,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float ControllerSensitivity;
 
-	//Maximum amount of stamina
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float MaxPlayerStamina;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TEnumAsByte<ESoulsCharacterState> SoulsCharacterState;
 
@@ -336,13 +328,22 @@ public:
 	UAC_HealthComponent* HealthComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAC_ElixirComponent* ElixirComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAC_LockOnComponent* LockOnComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAC_StatsComponent* StatsComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAC_SoulsCameraComponent* SoulsCameraComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAC_WeaponHolder* WeaponHolderComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAC_StaminaComponent* StaminaComponent;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UCameraComponent* Camera;

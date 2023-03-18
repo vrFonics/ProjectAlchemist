@@ -45,6 +45,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int CurrentMaxHealthAmount;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	int DefaultMaxHealthAmount;
+	
 	DECLARE_DELEGATE(FKillDelegate)
 
 	FKillDelegate KillDelegate; 

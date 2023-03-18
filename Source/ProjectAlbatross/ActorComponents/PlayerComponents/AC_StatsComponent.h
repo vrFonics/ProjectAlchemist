@@ -3,6 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AC_ElixirComponent.h"
+#include "AC_HealthComponent.h"
+#include "AC_StaminaComponent.h"
 #include "Components/ActorComponent.h"
 #include "Engine/DataTable.h"
 #include "AC_StatsComponent.generated.h"
@@ -84,9 +87,34 @@ public:
 	/** Upgrades a Stat via StatID by 1 Level. Contains protection against leveling up if individual cost is too high, but ensure that the total Upgrade Cost is less than or equal to the Player's Plague Samples if Upgrading multiple Stats via a single action. */
 	UFUNCTION(BlueprintCallable)
 	bool UpgradeStat(int StatID);
+
+	UFUNCTION(BlueprintCallable)
+	void RefreshStats();
+
+	UFUNCTION(BlueprintCallable)
+	TArray<FPlayerStat> GetAllStats();
+
+	UFUNCTION(BlueprintCallable)
+	void SetAllStats(TArray<FPlayerStat> NewStats);
 	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAC_HealthComponent* HealthComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAC_StaminaComponent* StaminaComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAC_ElixirComponent* ElixirComponent;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int MaxPlayerLevel;
+
+	DECLARE_DELEGATE_OneParam(SamplesAdded, int)
+
+	SamplesAdded SamplesAddedDelegate;
 	
 protected:
 
@@ -107,4 +135,6 @@ protected:
 
 	UPROPERTY()
 	int PlayerLevel;
+
+	
 };

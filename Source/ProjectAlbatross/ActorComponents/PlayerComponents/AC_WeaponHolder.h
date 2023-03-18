@@ -56,4 +56,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAC_ElixirComponent* ElixirComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAC_StatsComponent* StatsComponent;
 };
